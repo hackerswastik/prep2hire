@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 
 // Prep2Hire: Single-file landing + registration page
 // - TailwindCSS classes for styling
@@ -7,10 +7,9 @@ import React, { useMemo, useState } from "react";
 // - Captures UTM params & source
 // - Replace SUBMIT_URL with your API/Google Apps Script webhook
 
-const SUBMIT_URL = "https://script.google.com/macros/s/AKfycbxKJfC8Z0lD1r8xxxxxxx12345abcXYZ/exec";
+const SUBMIT_URL = "https://script.google.com/macros/s/AKfycbxfeAG58lLtiLsRPiF4-PmIchLUtlfjOcGawEFfU_5O6Pn9mqDWrKU6uZmnRFW4DxOPFw/exec"; // Your deployed Google Apps Script Web App URL
 // Google Apps Script Web App endpoint
 const WHATSAPP_LINK = "https://wa.me/7738652507?text=Hi%20Prep2Hire%2C%20I%20want%20to%20join%20the%20Java%20course"; // TODO: replace with your full number // TODO: change this to your backend/webhook
-
 export default function Prep2HireLanding() {
   const [form, setForm] = useState({
     fullName: "",
@@ -24,8 +23,8 @@ export default function Prep2HireLanding() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState({ type: "", msg: "" });
+  const [backendOk, setBackendOk] = useState(null);
 
-  // Read UTM parameters for marketing attribution
   const utm = useMemo(() => {
     const p = new URLSearchParams(window.location.search);
     return {
@@ -64,18 +63,34 @@ export default function Prep2HireLanding() {
     }
     setSubmitting(true);
     try {
-      const payload = { ...form, ...utm, submittedAt: new Date().toISOString(), userAgent: navigator.userAgent };
-      const body = new URLSearchParams(payload).toString();
-      const res = await fetch(SUBMIT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body
-      });
-      if (!res.ok) throw new Error("Failed to submit. Please try again.");
-      setStatus({ type: "success", msg: "Registered! Check your email for next steps." });
-      setForm((f) => ({ ...f, goals: "" }));
+              const payload = {
+          ...form,
+          ...utm,
+          submittedAt: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+        };
+        const body = new URLSearchParams(payload).toString();
+        const res = await fetch(SUBMIT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+        });
+        const text = await res.text();
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+        let data = null;
+        try {
+          data = JSON.parse(text);
+        } catch (_) {
+          // non-JSON is fine if status is OK
+        }
+        if (data && data.ok === false) {
+          throw new Error(data.error || "Server returned ok=false");
+        }
+        setStatus({ type: "success", msg: "Registered! Check your email for next steps." });
+        setForm((f) => ({ ...f, goals: "" }));
+
     } catch (err) {
-      setStatus({ type: "error", msg: err.message || "Something went wrong." });
+      setStatus({ type: "error", msg: `Submit failed: ${err.message}` });
     } finally {
       setSubmitting(false);
     }
@@ -83,7 +98,6 @@ export default function Prep2HireLanding() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
-      {/* Header */}
       <header className="border-b border-white/10 sticky top-0 z-30 backdrop-blur bg-neutral-950/70">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -99,7 +113,6 @@ export default function Prep2HireLanding() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl bg-cyan-500/20" />
@@ -129,10 +142,26 @@ export default function Prep2HireLanding() {
             <p className="mt-3 text-xs text-white/50">Next cohort starts: <span className="font-medium text-white/80">Sept 21</span> • Early-bird ends soon</p>
           </div>
 
-          {/* Registration Card (quick access) */}
           <div id="register" className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
             <h2 className="text-xl font-semibold">Register for the Cohort</h2>
             <p className="mt-1 text-sm text-white/60">Fill your details and we’ll email the next steps within minutes.</p>
+            {backendOk !== null && (
+  <div
+    className={`mt-2 inline-flex items-center gap-2 text-xs rounded-full px-2.5 py-1 border ${
+      backendOk
+        ? "border-emerald-400/40 text-emerald-300 bg-emerald-400/10"
+        : "border-red-400/40 text-red-300 bg-red-400/10"
+    }`}
+  >
+    <span
+      className={`w-1.5 h-1.5 rounded-full ${
+        backendOk ? "bg-emerald-400" : "bg-red-400"
+      }`}
+    />
+    {backendOk ? "Connected to Google Sheet" : "Cannot reach Google Sheet"}
+  </div>
+)}
+
             <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
@@ -192,7 +221,7 @@ export default function Prep2HireLanding() {
                 </div>
               )}
 
-              <button disabled={submitting} className="mt-2 inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-neutral-900 font-semibold px-5 py-3 disabled:opacity-60">
+              <button disabled={submitting || backendOk === false}className="mt-2 inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-neutral-900 font-semibold px-5 py-3 disabled:opacity-60">
                 {submitting ? (
                   <>
                     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
@@ -208,75 +237,6 @@ export default function Prep2HireLanding() {
         </div>
       </section>
 
-      {/* Why Us */}
-      <section id="why" className="max-w-6xl mx-auto px-4 py-16">
-        <h2 className="text-2xl font-semibold">Why learners choose Prep2Hire</h2>
-        <div className="mt-6 grid md:grid-cols-3 gap-4">
-          {[
-            { title: "Project-first learning", desc: "Ship a real-world app (APIs, DB, auth, deployment) you can demo in interviews." },
-            { title: "Interview prep woven in", desc: "Daily MCQs, DSA drills, and weekly mock interviews with feedback." },
-            { title: "Career outcomes", desc: "Resume revamp, LinkedIn polish, referrals, and job search strategy." },
-          ].map((f, i) => (
-            <div key={i} className="rounded-2xl border border-white/10 p-5 bg-white/5">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-400 mb-3" />
-              <h3 className="font-medium">{f.title}</h3>
-              <p className="mt-1 text-sm text-white/70">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Curriculum */}
-      <section id="curriculum" className="max-w-6xl mx-auto px-4 py-16">
-        <h2 className="text-2xl font-semibold">30‑Day Curriculum Snapshot</h2>
-        <div className="mt-6 grid md:grid-cols-2 gap-4 text-sm">
-          <ul className="space-y-2 rounded-2xl border border-white/10 p-5 bg-white/5">
-            <li><span className="text-emerald-300">Day 1–5:</span> Core Java, OOP, Collections</li>
-            <li><span className="text-emerald-300">Day 6–10:</span> Streams, Generics, Exceptions</li>
-            <li><span className="text-emerald-300">Day 11–15:</span> Spring Boot REST APIs, JPA/Hibernate</li>
-            <li><span className="text-emerald-300">Day 16–20:</span> Security, JWT, Validation, Swagger</li>
-            <li><span className="text-emerald-300">Day 21–25:</span> Microservices patterns, Kafka basics</li>
-            <li><span className="text-emerald-300">Day 26–30:</span> Project build & interview prep</li>
-          </ul>
-          <div className="rounded-2xl border border-white/10 p-5 bg-gradient-to-br from-neutral-900 to-neutral-800">
-            <h3 className="font-medium">Fees & Offers</h3>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl border border-white/10 p-4 bg-white/5">
-                <div className="text-white/70">Early-bird</div>
-                <div className="text-2xl font-bold">₹9,999</div>
-                <div className="text-xs text-white/50">till Sept 15</div>
-              </div>
-              <div className="rounded-xl border border-white/10 p-4 bg-white/5">
-                <div className="text-white/70">Standard</div>
-                <div className="text-2xl font-bold">₹12,999</div>
-                <div className="text-xs text-white/50">after Sept 15</div>
-              </div>
-            </div>
-            <a href="#register" className="mt-4 inline-block px-4 py-2 rounded-xl bg-white text-neutral-900 font-semibold">Grab your seat</a>
-            <p className="mt-2 text-xs text-white/50">EMI/No‑cost options available. Scholarships for deserving candidates.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="max-w-6xl mx-auto px-4 py-16">
-        <h2 className="text-2xl font-semibold">FAQ</h2>
-        <div className="mt-6 grid md:grid-cols-2 gap-4 text-sm">
-          {[
-            ["Is this live or recorded?", "Live sessions with recordings available for revision."],
-            ["What if I miss a class?", "You can catch up via recordings and mentor office hours."],
-            ["Do you provide placement support?", "Yes—resume, LinkedIn, referrals where possible, and interview prep."],
-            ["What are the class timings?", "Weekend and weekday batches available. Pick what suits you."],
-          ].map((qa, i) => (
-            <div key={i} className="rounded-2xl border border-white/10 p-4 bg-white/5">
-              <div className="font-medium">{qa[0]}</div>
-              <div className="text-white/70 mt-1">{qa[1]}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Footer */}
       <footer className="border-t border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-10 text-sm text-white/60 grid md:grid-cols-3 gap-6">
           <div>
