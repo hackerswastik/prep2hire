@@ -7,7 +7,8 @@ import React, { useMemo, useState } from "react";
 // - Captures UTM params & source
 // - Replace SUBMIT_URL with your API/Google Apps Script webhook
 
-const SUBMIT_URL = "https://script.google.com/macros/s/PASTE_YOUR_DEPLOYMENT_ID/exec"; // Google Apps Script Web App endpoint
+const SUBMIT_URL = "https://script.google.com/macros/s/AKfycbxKJfC8Z0lD1r8xxxxxxx12345abcXYZ/exec";
+// Google Apps Script Web App endpoint
 const WHATSAPP_LINK = "https://wa.me/7738652507?text=Hi%20Prep2Hire%2C%20I%20want%20to%20join%20the%20Java%20course"; // TODO: replace with your full number // TODO: change this to your backend/webhook
 
 export default function Prep2HireLanding() {
