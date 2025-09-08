@@ -6,7 +6,7 @@ import React, { useMemo, useState, useEffect } from "react";
 // - Simple client-side validation
 // - Captures UTM params & source
 // - Replace SUBMIT_URL with your API/Google Apps Script webhook
-const SUBMIT_URL = "https://script.google.com/macros/s/AKfycbw5V6M_c6ZEMtPgavTYpL9fSMQ12t4AaEATWqA7DTva8fzC1AEZLcy1MHdNXzYJfg_tGg/exec";
+const SUBMIT_URL = "https://script.google.com/macros/s/AKfycbzbakaddOXLko2KocgpKxUNgyEznJLHulTkTmXzSMNDfyfqpFXQWMaqCRu5kD6g4QeEhQ/exec";
 
 // Google Apps Script Web App endpoint
 const WHATSAPP_LINK = "https://wa.me/7738652507?text=Hi%20Prep2Hire%2C%20I%20want%20to%20join%20the%20Java%20course"; // TODO: replace with your full number // TODO: change this to your backend/webhook
